@@ -4,6 +4,8 @@ import { app } from './app.js';
 import connectDB from './db/index.js';
 import dotenv from "dotenv"; // this is for handling environment variable
 
+
+
 dotenv.config({
     path:'./env'
 })
@@ -12,7 +14,7 @@ dotenv.config({
 
 connectDB()
 .then(()=>{
-    app.listen(process.env.PORT || 4500 ,()=>{
+    app.listen(process.env.PORT || 4500,()=>{
         console.log(`App started at port : ${process.env.PORT}`)
     })
 })
