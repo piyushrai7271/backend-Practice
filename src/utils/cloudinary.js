@@ -13,7 +13,8 @@ const uploadOnCloudinary = async (localFilePath) => {
     let response = await cloudinary.uploader.upload(localFilePath, {
       resource_type: "auto",
     });
-    console.log("file is uploaded on cloudnery :", response.url);
+    // console.log("file is uploaded on cloudnery :", response.url);
+    fs.unlinkSync(localFilePath);
     return response;
   } catch (error) {
     fs.unlinkSync(localFilePath); // it will remove the tempery file which as the uploaded opretion got failed

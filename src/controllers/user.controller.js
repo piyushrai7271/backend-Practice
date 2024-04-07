@@ -6,9 +6,9 @@ import {uploadOnCloudinary} from "../utils/cloudinary.js";
 
 const registerUser = asynHandler(async (req, resp) => {
  
-    //getting user detail from front end
+    //getting user detail from front end or postman
 
-  const { fullName, userName, email } = req.body;
+  const { fullName, userName, email,password } = req.body;
 
   //   console.log("email :", email);
 
@@ -24,7 +24,7 @@ const registerUser = asynHandler(async (req, resp) => {
   // check if user already existed : username, email
   // here user can directly connect to database because it is having mongoose
      
-    const  existedUser = User.findOne({
+    const  existedUser = await User.findOne({
         $or:[{email},{userName}]
     })
     if(existedUser){
@@ -34,7 +34,12 @@ const registerUser = asynHandler(async (req, resp) => {
     //checking image and avatar
 
     const avatarLocalPath = req.files?.avatar[0]?.path;
-    const coverImageLocalPath = req.files?.coverImage[0]?.path
+    // const coverImageLocalPath = req.files?.coverImage[0]?.path
+
+    let coverImageLocalPath;
+    if(req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0){
+      coverImageLocalPath = req.files.coverImage[0].path
+    }
 
     if(! avatarLocalPath){
         throw new ApiError(400,"Avatar file is required !");
