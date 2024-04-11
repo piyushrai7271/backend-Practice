@@ -25,7 +25,7 @@ const userSchema = new mongoose.Schema(
       trim: true,
       index: true,
     },
-    avtar: {
+    avatar: {
       type: String, // cloudnery servise will be used
       required: true,
     },
