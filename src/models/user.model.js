@@ -57,7 +57,8 @@ userSchema.pre("save", async function (next) {
 });
 
 userSchema.methods.isPasswordCorrect = async function (password) {
-  return await bcrypt.compare(password, this.password);
+  // here password must be string so i used toString() method not in video
+  return await bcrypt.compare(password.toString(), this.password);
 };
 
 userSchema.methods.generateAccessToken = function () {
