@@ -195,7 +195,7 @@ const logOutUser = asynHandler(async (req, resp) => {
     .json(new ApiResponse(200, {}, "User LogedOut"));
 });
 
-// code for getting new refreshToken after expirie of token
+// endpoint code for getting new refreshToken after expirie of token
 
 const refreshAccessToken = asynHandler(async (req, resp) => {
   
