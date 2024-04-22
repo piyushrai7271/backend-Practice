@@ -18,7 +18,7 @@ const verifyJWT = asynHandler(async(req,_,next)=>{
         const decodedToken =  jwt.verify(token,process.env.ACCESS_TOKEN_SECRET);
   
       //find user with decoded token   //remove password and refresh Token for decoded user
-        const user = await User.findById(decodedToken?._id).select("-password -refreshToken")
+        const user = await User.findById(decodedToken?._id).select("-password -refreshToken");
      
       //check if user is present or not if not send error message
   
