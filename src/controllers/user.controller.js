@@ -231,7 +231,7 @@ const refreshAccessToken = asynHandler(async (req, resp) => {
   
     return resp.status(200)
                .cookies("accessToken",accessToken,options)
-               .cookies("refreshToken",newRefreshToken)
+               .cookies("refreshToken",newRefreshToken,options)
                .json(
                    new ApiResponse(
                     200,
@@ -245,4 +245,14 @@ const refreshAccessToken = asynHandler(async (req, resp) => {
 
 });
 
-export { registerUser, loginUser, logOutUser, refreshAccessToken };
+const changeCurrentPassword = asynHandler(async(req,resp)=>{
+
+})
+
+export { 
+  registerUser,
+  loginUser, 
+  logOutUser, 
+  refreshAccessToken ,
+  changeCurrentPassword
+};
