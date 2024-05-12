@@ -5,6 +5,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import jwt from "jsonwebtoken";
 
+
 const generateAccessAndRefreshToken = async (userId) => {
   try {
     const user = await User.findById(userId);
@@ -21,7 +22,6 @@ const generateAccessAndRefreshToken = async (userId) => {
     );
   }
 };
-
 //register user
 
 const registerUser = asynHandler(async (req, resp) => {
@@ -167,7 +167,6 @@ const loginUser = asynHandler(async (req, resp) => {
       )
     );
 });
-
 // code for logout user
 
 const logOutUser = asynHandler(async (req, resp) => {
@@ -198,7 +197,6 @@ const logOutUser = asynHandler(async (req, resp) => {
 // endpoint code for getting new refreshToken after expirie of token
 
 const refreshAccessToken = asynHandler(async (req, resp) => {
-  
   const incomingRefreshToken =
     req.cookies.refreshToken || req.body.refreshToken;
 
@@ -211,48 +209,247 @@ const refreshAccessToken = asynHandler(async (req, resp) => {
       incomingRefreshToken,
       process.env.REFRESH_TOKEN_SECRET
     );
-  
+
     const user = await User.findById(decodedToken?._id);
-  
+
     if (!user) {
       throw new ApiError(401, "refresh token is expired or used");
     }
-  
+
     if (incomingRefreshToken !== user?.refreshToken) {
       throw new ApiError(401);
     }
-  
-    const { accessToken, newRefreshToken } = generateAccessAndRefreshToken(user._id);
-  
+
+    const { accessToken, newRefreshToken } = generateAccessAndRefreshToken(
+      user._id
+    );
+
     const options = {
       httpOnly: true,
       secure: true,
     };
-  
-    return resp.status(200)
-               .cookies("accessToken",accessToken,options)
-               .cookies("refreshToken",newRefreshToken,options)
-               .json(
-                   new ApiResponse(
-                    200,
-                    {accessToken,refreshToken:newRefreshToken},
-                    "Access token refreshed"
-                   )
-               )
+
+    return resp
+      .status(200)
+      .cookies("accessToken", accessToken, options)
+      .cookies("refreshToken", newRefreshToken, options)
+      .json(
+        new ApiResponse(
+          200,
+          { accessToken, refreshToken: newRefreshToken },
+          "Access token refreshed"
+        )
+      );
   } catch (error) {
-    throw new ApiError(401, error?.message || "Invalid refresh token")
+    throw new ApiError(401, error?.message || "Invalid refresh token");
   }
+});
+
+// endpoint code for changing password
+
+const changeCurrentPassword = asynHandler(async (req, resp) => {
+  const { oldPassword, newPassword } = req.body;
+
+  if (!(oldPassword && newPassword)) {
+    throw new ApiError(402, "Pleas provide the old and new password");
+  }
+
+  const user = await User.findById(req.user._id);
+
+  if (!user) {
+    throw new ApiError(404, "user not login");
+  }
+
+  const ispasswordCorrect = await user.isPasswordCorrect(oldPassword);
+
+  if (!ispasswordCorrect) {
+    throw new ApiError(404, "oldPassword is wrong");
+  }
+
+  user.password = newPassword;
+  user.save({ validateBeforeSave: false }).select("-password");
+
+  return resp
+    .status(201)
+    .json(new ApiResponse(200, { user }, "password changed"));
+});
+
+// endpoint for updating userdetail
+
+const updateUserDetails = asynHandler(async(req,resp)=>{
+
+   const {fullName,email}= req.body;
+
+   if(!(fullName && email )){
+     throw new ApiError(401,"pleas provide the details which you want to update")
+   }
+
+   const user = await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $set:{
+        fullName:fullName,
+        email:email
+      },
+    },
+    {
+      new:true
+    }
+   ).select("-password")
+
+   if(!user){
+    throw new ApiError(401,"user is missing")
+   }
+
+   return resp.status(200)
+              .json(200,user,"User details updated")
 
 });
 
-const changeCurrentPassword = asynHandler(async(req,resp)=>{
+// update coverImage endpoint
 
+const updateUserCoverImage = asynHandler(async(req,resp)=>{
+
+    const coverImageLocalpath = req.file?.path;
+
+    if(!coverImageLocalpath){
+      throw new ApiError(404,"cover Image local path is missing")
+    }
+
+    const coverImage = await uploadOnCloudinary(coverImageLocalpath);
+
+    if(!coverImage.url){
+       throw new ApiError(404,"cover image is missing")
+    }
+
+    const user = await User.findByIdAndUpdate(
+       req.user._id,
+       {
+         coverImage:coverImage.url
+       },
+       {
+        new:true
+       }
+    ).select("-password")
+
+    return resp.status(200)
+               .json(200,user,"cover Image updated")
+});
+
+const updateUserAvatar  = asynHandler(async(req,resp)=>{
+
+    const avatarLocalfilePath = req.file?.path;
+
+    if(!avatarLocalfilePath){
+      throw new ApiError(404,"avatar local file path is missing")
+    }
+
+    const avatar = await uploadOnCloudinary(avatarLocalfilePath);
+
+    if(!avatar.url){
+      throw new ApiError(402,"Avatar file is missing")
+    }
+
+    const user = await User.findByIdAndUpdate(
+       req.user._id,
+       {
+        avatar:avatar.url
+       },
+       {
+        new:true
+       }
+    ).select("-password")
+
+    return resp.status(200)
+               .json(200,{user}, "avatar file is updated")
 })
 
-export { 
+//  emdpoint with aggregation pipeline
+
+const getUserChannelProfile = asynHandler(async(req,resp)=>{
+   const {userName} = req.params;
+
+   if(!userName?.trim()){
+     throw new ApiError(400,"username is missing")
+   }
+
+    const channel = await User.aggregate([
+      {
+        $match:{
+          userName:userName?.toLowerCase()
+        }
+      },
+      {
+        $lookup:{
+           from:"subscriptions",
+           localField:"_id",
+           foreignField:"channel",
+           as:"subscribers"
+        }
+      },
+      {
+        $lookup:{
+          from:"subscriptions",
+          localField:"_id",
+          foreignField:"subscriber",
+          as:"subscribedTo"
+        }
+      },
+      {
+        $addFields:{
+          subscribersCount:{
+            $size:"$subscribers"
+          },
+          channelsSubscribedToCount:{
+             $size:"$subscribedTo"
+          },
+          isSubscribed:{
+             $cond:{
+               if:{$in:[req.user?._id, "$subscribers.subscriber"]},
+               then:true,
+               else:false
+             }
+          }
+        }
+      },
+      {
+        $project:{
+           fullName:1,
+           userName:1,
+           subscribersCount:1,
+           channelsSubscribedToCount:1,
+           isSubscribed:1,
+           avatar:1,
+           email:1,
+           coverImage:1
+        }
+      }
+   ])
+
+   // console log this channel value
+
+   if(!channel?.length){
+      throw new ApiError(404,"channel does't exiest")
+   }
+
+   //here channel value is comming from aggregation so, it will bw array
+ 
+  return resp.status(200)
+             .json(
+              new ApiResponse(200,channel[0],"user channel fetched successfully")
+             ) 
+})
+
+
+
+export {
   registerUser,
-  loginUser, 
-  logOutUser, 
-  refreshAccessToken ,
-  changeCurrentPassword
+  loginUser,
+  logOutUser,
+  refreshAccessToken,
+  changeCurrentPassword,
+  updateUserDetails,
+  updateUserCoverImage,
+  updateUserAvatar,
+  getUserChannelProfile
 };
