@@ -4,6 +4,7 @@ import { User } from "../models/user.model.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 
 
 const generateAccessAndRefreshToken = async (userId) => {
@@ -367,6 +368,7 @@ const updateUserAvatar  = asynHandler(async(req,resp)=>{
 //  emdpoint with aggregation pipeline
 
 const getUserChannelProfile = asynHandler(async(req,resp)=>{
+   
    const {userName} = req.params;
 
    if(!userName?.trim()){
@@ -426,7 +428,7 @@ const getUserChannelProfile = asynHandler(async(req,resp)=>{
       }
    ])
 
-   // console log this channel value
+   // TODO::-> console log this channel value
 
    if(!channel?.length){
       throw new ApiError(404,"channel does't exiest")
@@ -438,8 +440,59 @@ const getUserChannelProfile = asynHandler(async(req,resp)=>{
              .json(
               new ApiResponse(200,channel[0],"user channel fetched successfully")
              ) 
+
 })
 
+const getWatchHistory = asynHandler(async(req,resp)=>{
+
+   const user = await User.aggregate([
+    {
+      $match:{
+        _id: new mongoose.Types.ObjectId(req.user._id)
+      }
+    },
+    {
+      $lookup:{
+        from:"videos",
+        localField:"watchHistory",
+        foreignField:"_id",
+        as: "watchHistory",
+        pipeline:[
+          {
+            $lookup:{
+              from:"users",
+              localField:"owner",
+              foreignField:"_id",
+              as:"owner",
+              pipeline:[
+                {
+                  $project:{
+                    fullName:1,
+                    userName:1,
+                    avatar:1
+                  }
+                },
+                {
+                  $addFields:{
+                    owner:{
+                      $first:"$owner"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+   ])
+
+   return resp.status(200)
+              .json(
+                new ApiResponse(200,user[0].watchHistory,"watch history fetched successfully")
+              )
+              
+})
 
 
 export {
@@ -451,5 +504,6 @@ export {
   updateUserDetails,
   updateUserCoverImage,
   updateUserAvatar,
-  getUserChannelProfile
+  getUserChannelProfile,
+  getWatchHistory
 };
