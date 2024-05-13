@@ -246,6 +246,15 @@ const refreshAccessToken = asynHandler(async (req, resp) => {
   }
 });
 
+// endpoint for geting current user
+
+const getCurrentUser  = asynHandler(async(req,resp)=>{
+   return resp.status(200)
+              .json(
+                new ApiResponse(200,req.user,"current user is fetched")
+              )
+})
+
 // endpoint code for changing password
 
 const changeCurrentPassword = asynHandler(async (req, resp) => {
@@ -491,7 +500,7 @@ const getWatchHistory = asynHandler(async(req,resp)=>{
               .json(
                 new ApiResponse(200,user[0].watchHistory,"watch history fetched successfully")
               )
-              
+
 })
 
 
@@ -499,6 +508,7 @@ export {
   registerUser,
   loginUser,
   logOutUser,
+  getCurrentUser,
   refreshAccessToken,
   changeCurrentPassword,
   updateUserDetails,
