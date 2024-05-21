@@ -5,6 +5,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
+import { json } from "express";
 
 
 const generateAccessAndRefreshToken = async (userId) => {
@@ -378,24 +379,24 @@ const updateUserAvatar  = asynHandler(async(req,resp)=>{
 
 const getUserChannelProfile = asynHandler(async(req,resp)=>{
    
-   const {userName} = req.params;
+  const {userName} = req.params;
 
-   if(!userName?.trim()){
-     throw new ApiError(400,"username is missing")
-   }
-
-    const channel = await User.aggregate([
+  if(!userName?.trim()){
+     throw new ApiError(402,"UserName is missing")
+  }
+    
+   const channel = await User.aggregate([
       {
         $match:{
-          userName:userName?.toLowerCase()
+          userName:userName?.toLowerCase(),
         }
       },
       {
         $lookup:{
-           from:"subscriptions",
-           localField:"_id",
-           foreignField:"channel",
-           as:"subscribers"
+          from:"subscriptions",
+          localField:"_id",
+          foreignField:"channel",
+          as:"subscribers"
         }
       },
       {
@@ -408,48 +409,43 @@ const getUserChannelProfile = asynHandler(async(req,resp)=>{
       },
       {
         $addFields:{
-          subscribersCount:{
+          SubscribersCount:{
             $size:"$subscribers"
           },
-          channelsSubscribedToCount:{
-             $size:"$subscribedTo"
+          SubscribedTo:{
+            $size:"$subscribedTo"
           },
           isSubscribed:{
-             $cond:{
-               if:{$in:[req.user?._id, "$subscribers.subscriber"]},
-               then:true,
-               else:false
-             }
+            $cond:{
+              if:{$in:[req.user?._id,"$subscribers.subscriber"]},
+              then:true,
+              else:false
+           }
           }
         }
       },
       {
         $project:{
-           fullName:1,
-           userName:1,
-           subscribersCount:1,
-           channelsSubscribedToCount:1,
-           isSubscribed:1,
-           avatar:1,
-           email:1,
-           coverImage:1
+          userName:1,
+          fullName:1,
+          email:1,
+          avatar:1,
+          coverImage:1,
+          SubscribersCount:1,
+          SubscribedTo:1,
+          isSubscribed:1
         }
       }
    ])
 
-   // TODO::-> console log this channel value
-
    if(!channel?.length){
-      throw new ApiError(404,"channel does't exiest")
+    throw new ApiError(404,"channel  is missing")
    }
 
-   //here channel value is comming from aggregation so, it will bw array
- 
-  return resp.status(200)
-             .json(
-              new ApiResponse(200,channel[0],"user channel fetched successfully")
-             ) 
-
+   return resp.status(200)
+              .json(
+                new ApiResponse(201,channel[0],"profile data is fetched successfully")
+              )
 })
 
 const getWatchHistory = asynHandler(async(req,resp)=>{
